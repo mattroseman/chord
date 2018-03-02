@@ -29,9 +29,9 @@ var ChordNode = function(hostname, port) {
             id = data.id
             msg = data.msg
 
-            if (msg === 'ping') {
-                socket.write(JSON.stringify({'id': this.id, 'msg': 'pong'}));
-            }
+            handleMessage(id, msg, (response) => {
+                socket.write(JSON.stringify({'id': this.id, 'msg': response}));
+            });
         });
     });
 
@@ -53,6 +53,15 @@ var ChordNode = function(hostname, port) {
         server.close(() => {
             callback();
         });
+    }
+
+    /*
+    handleMessage will look at a message's id and msg, and determine an appropriate response, which it will send in a callback
+    */
+    function handleMessage(id, msg, callback) {
+        if (msg === 'ping') {
+            callback('pong');
+        }
     }
 
     /*
