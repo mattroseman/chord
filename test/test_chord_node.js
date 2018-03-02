@@ -1,61 +1,56 @@
 const net = require('net');
-var assert = require('assert');
+var should = require('should');
 var ChordNode = require('../app');
 
 describe('ChordNode', function() {
-
+    node = new ChordNode('127.0.0.1', 41234);
     it('should have hostname and port properties set', function() {
-        var node = new ChordNode('127.0.0.1', 41234);
-        assert.equal(node.hostname, '127.0.0.1');
-        assert.equal(node.port, 41234);
-        node.closeServer();
+        node.hostname.should.be.exactly('127.0.0.1');
+        node.port.should.be.exactly(41234);
     });
 
     it('should be created with an id', function() {
-        var node = new ChordNode('127.0.0.1', 41234);
-        assert.equal(node.id, '98c4c77306bfa6e5a8e574070441b676050f3166');
-        node.closeServer();
+        node.id.should.be.exactly('98c4c77306bfa6e5a8e574070441b676050f3166');
     });
 
     it('should respond to \'ping\' message with a \'pong\' message', function(done) {
-        var node = new ChordNode('127.0.0.1', 41234);
         var client = new net.Socket();
         client.connect(41234, '127.0.0.1', function() {
             client.on('data', (data) => {
                 data = JSON.parse(data);
                 id = data.id;
                 msg = data.msg;
-                assert.equal(id, '98c4c77306bfa6e5a8e574070441b676050f3166' );
-                assert.equal(msg, 'pong');
+                id.should.be.exactly('98c4c77306bfa6e5a8e574070441b676050f3166');
+                msg.should.be.exactly('pong');
                 client.end();
+                done();
             });
             client.write(JSON.stringify({'id': 1, 'msg': 'ping'}));
-        });
-        node.closeServer(() => {
-            done();
         });
     });
 
 
-    describe('#pingNode()', function(done) {
-        it ('should send a ping to the specified node, and get a pong response', function() {
-            node1 = new ChordNode('127.0.0.1', 41234);
-            node2 = new ChordNode('127.0.0.1', 41235);
+    describe('#pingNode()', function() {
+        node2 = new ChordNode('127.0.0.1', 41235);
 
-            node1.pingNode({'id': 1, 'hostname': '127.0.0.1', 'port': 41235})
-                .then((result) => {
-                    assert.equal(result, 'success');
-                    node1.closeServer(_ => {
-                        node2.closeServer(done);
-                    });
-                })
-                .catch(err => {
-                    node1.closeServer(_ => {
-                        node2.closeServer(_ => {
-                            done(err);
-                        });
-                    });
-                });
+        it ('should send a ping to the specified node, and get a pong response', function() {
+            return node.pingNode({'id': 1, 'hostname': '127.0.0.1', 'port': 41235})
+                .should.be.fulfilledWith('success')
         });
+
+        var testServer = net.createServer((socket) => {
+            socket.on('data', (data) => {
+                // Don't respond to 'ping' at all
+            });
+        });
+        testServer.listen(41236, '127.0.0.1');
+
+        it ('should return a rejected promise if the given node doesn\'t exist', function() {
+            this.timeout(3000);
+            return node.pingNode({'id': 1, 'hostname': '127.0.0.1', 'port': 41236})
+                .should.be.rejectedWith('Ping timeout')
+        });
+
+        testServer.close();
     });
 });

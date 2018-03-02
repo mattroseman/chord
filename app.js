@@ -57,8 +57,10 @@ var ChordNode = function(hostname, port) {
     @return: a Promise that will be true on successful ping and pong if there is no response
     */
     this.pingNode = function(node) {
-        var client = new net.Socket();
         return new Promise((resolve, reject) => {
+            var client = new net.Socket();
+            client.setTimeout(1000);
+
             client.connect(node.port, node.hostname, function() {
                 client.on('data', (data) => {
                     data = JSON.parse(data);
@@ -72,12 +74,14 @@ var ChordNode = function(hostname, port) {
                 });
 
                 client.on('timeout', () => {
-                    reject(Error('Ping timedout'));
+                    reject(Error('Ping timeout'));
                 });
 
-                client.on('error', (err) => {
-                    reject(err);
-                });
+                client.write(JSON.stringify({'id': 1, 'msg': 'ping'}));
+            });
+
+            client.on('error', (err) => {
+                reject(err);
             });
         });
     };

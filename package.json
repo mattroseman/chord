@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/mroseman95/chord#readme",
   "devDependencies": {
-    "mocha": "^5.0.1"
+    "mocha": "^5.0.1",
+    "should": "^13.2.1"
   }
 }
