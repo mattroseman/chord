@@ -1,0 +1,19 @@
+{
+  "name": "chord",
+  "version": "0.0.1",
+  "description": "Chord implementation in Node.js",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mroseman95/chord.git"
+  },
+  "author": "Matthew Roseman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mroseman95/chord/issues"
+  },
+  "homepage": "https://github.com/mroseman95/chord#readme"
+}
