@@ -29,9 +29,12 @@ var ChordNode = function(hostname, port) {
             id = data.id
             msg = data.msg
 
-            handleMessage(id, msg, (response) => {
-                socket.write(JSON.stringify({'id': this.id, 'msg': response}));
-            });
+            handleMessage(id, msg)
+                .then((response) => {
+                    socket.write(JSON.stringify({'id': this.id, 'msg': response}));
+                }).catch((err) => {
+                    // Don't do anything if this is an unkown message
+                });
         });
     });
 
@@ -56,12 +59,16 @@ var ChordNode = function(hostname, port) {
     }
 
     /*
-    handleMessage will look at a message's id and msg, and determine an appropriate response, which it will send in a callback
+    handleMessage will look at some message to this node, and return a Promise with the appropriate response
     */
     function handleMessage(id, msg, callback) {
-        if (msg === 'ping') {
-            callback('pong');
-        }
+        return new Promise((resolve, reject) => {
+            if (msg === 'ping') {
+                resolve('pong');
+            } else {
+                reject(Error('unknown message'));
+            }
+        });
     }
 
     /*
@@ -97,7 +104,7 @@ var ChordNode = function(hostname, port) {
 
     /*
     pingNode will accept a node object, and ping it, and check if there is a pong response
-    @return: a Promise that will be true on successful ping and pong if there is no response
+    @return: a Promise that will resolve on successful response and rejected on error or timeout
     */
     this.pingNode = function(node) {
         return new Promise((resolve, reject) => {
