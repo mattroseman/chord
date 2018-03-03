@@ -23,23 +23,6 @@ var ChordNode = function(hostname, port) {
     this.successor = null;
     this.predecessor = null;
 
-    var server = net.createServer((socket) => {
-        socket.on('data', (data) => {
-            data = JSON.parse(data)
-            id = data.id
-            msg = data.msg
-
-            handleMessage(id, msg)
-                .then((response) => {
-                    socket.write(JSON.stringify({'id': this.id, 'msg': response}));
-                }).catch((err) => {
-                    // Don't do anything if this is an unkown message
-                });
-        });
-    });
-
-    server.listen(port, hostname);
-
     /*
     generateId() gets this nodes ip and port and hashes it to generate a unique id
     */
@@ -48,6 +31,24 @@ var ChordNode = function(hostname, port) {
         hash.update(`${hostname}:${port}`);
         return hash.digest('hex');
     }
+
+    var server = net.createServer((socket) => {
+        socket.on('data', (request) => {
+            request = JSON.parse(request);
+            id = request.id;
+            msg = request.msg;
+            data = request.data;
+
+            handleMessage(id, msg, data)
+                .then((response) => {
+                    socket.write(response);
+                }).catch((err) => {
+                    // Don't do anything if this is an unkown message
+                });
+        });
+    });
+
+    server.listen(port, hostname);
 
     /*
     closeServer shuts down this node's TCP server (mainly used in testing)
@@ -61,8 +62,19 @@ var ChordNode = function(hostname, port) {
     /*
     handleMessage will look at some message to this node, and return a Promise with the appropriate response
     */
-    function handleMessage(id, msg, callback) {
+    function handleMessage(id, msg, data) {
         return new Promise((resolve, reject) => {
+            switch (msg) {
+                case 'ping':
+                    resolve('pong');
+                case 'findSuccessor':
+                    if (data === null) {
+                        reject(Error('no data'));
+                    }
+                    // TODO find the successor of the node in data
+                default:
+                    reject(Error('unknown message'));
+            }
             if (msg === 'ping') {
                 resolve('pong');
             } else {
@@ -74,19 +86,14 @@ var ChordNode = function(hostname, port) {
     /*
     sendMessage will send some message to the specified node, and return Promise with the response
     */
-    function sendMessage(node, msg) {
+    function sendMessage(node, msg, data) {
         var client = new net.Socket();
         client.setTimeout(1000);
 
         return new Promise((resolve, reject) => {
             client.connect(node.port, node.hostname, () => {
-                client.on('data', (data) => {
-                    data = JSON.parse(data);
-                    // TODO check that id in data matches node.id
-                    id = data.id;
-                    msg = data.msg;
-
-                    return resolve(msg);
+                client.on('data', (response) => {
+                    return resolve(response);
                 });
 
                 client.on('timeout', () => {
@@ -97,7 +104,7 @@ var ChordNode = function(hostname, port) {
                     reject(err);
                 });
 
-                client.write(JSON.stringify({'id': this.id, 'msg': msg}));
+                client.write(JSON.stringify({'id': this.id, 'msg': msg, 'data': data}));
             });
         });
     }
@@ -110,7 +117,7 @@ var ChordNode = function(hostname, port) {
         return new Promise((resolve, reject) => {
             sendMessage(node, 'ping')
                 .then((response) => {
-                    if (response === 'pong') {
+                    if (response.toString() === 'pong') {
                         resolve('success');
                     }
 
@@ -121,6 +128,17 @@ var ChordNode = function(hostname, port) {
                     }
                 });
         });
+    };
+
+    /*
+    join will attempt to join a chord network through the given node
+    */
+    this.join = function(node) {
+        sendMessage(node, 'findSuccessor', self)
+            .then((response) => {
+                this.successor = JSON.parse(response);
+            }).catch((err) => {
+            });
     };
 };
 

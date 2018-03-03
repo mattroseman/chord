@@ -28,12 +28,8 @@ describe('ChordNode', function() {
     it('should respond to \'ping\' message with a \'pong\' message', function(done) {
         var client = new net.Socket();
         client.connect(41234, '127.0.0.1', function() {
-            client.on('data', (data) => {
-                data = JSON.parse(data);
-                id = data.id;
-                msg = data.msg;
-                id.should.be.exactly('98c4c77306bfa6e5a8e574070441b676050f3166');
-                msg.should.be.exactly('pong');
+            client.on('data', (response) => {
+                response.toString().should.be.exactly('pong');
                 client.end();
                 done();
             });
